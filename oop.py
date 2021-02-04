@@ -44,11 +44,11 @@ class Place:
                       f'координаты '
                       f'будут '
                       f'вычислены автоматически{ENDC}')
-            _geolocator = Nominatim(user_agent="yuriy.kirillov@gmail.com")
-            _location = _geolocator.geocode(name)
-            self.name = _location
-            self.latitude = _location.latitude
-            self.longitude = _location.longitude
+            location = Nominatim(
+                user_agent="yuriy.kirillov@gmail.com").geocode(name)
+            self.name = location
+            self.latitude = location.latitude
+            self.longitude = location.longitude
         else:
             # если название не введено, проверяем, что введеты
             # полные координаты
@@ -57,8 +57,7 @@ class Place:
                       f'координаты{ENDC}')
                 raise ValueError
             else:
-                self.latitude = latitude
-                self.longitude = longitude
+                self.latitude, self.longitude = latitude, longitude
             # строка для финального вывода
             self.name = f'с координатами {self.latitude}, {self.longitude}'
 
@@ -81,21 +80,21 @@ class Times:
         else:
             self.entered_date = dt.datetime.strptime(date, DATE_FORMAT).date()
 
-    def get_coordinates(self, place):
+    def get_times(self, place):
         # Метод для отправки запроса на сервер времени и полечения
         # времен рассвета и заката
-        _request_params = {
+        request_params = {
             'lat': place.latitude,
             'lng': place.longitude,
             'date': self.entered_date,
             'formatted': 0
         }
-        _response = requests.get(API_URL, params=_request_params)
+        response = requests.get(API_URL, params=request_params)
         # ответ приходит в виде json, поэтому используем json.loads
         # для превращения его в словарь
-        _json_data_full = json.loads(_response.text)
-        sunrise_str, sunset_str = (_json_data_full['results']['sunrise'],
-                                   _json_data_full['results']['sunset'])
+        json_data_full = json.loads(response.text)
+        sunrise_str, sunset_str = (json_data_full['results']['sunrise'],
+                                   json_data_full['results']['sunset'])
         # Получили время в стринге, переводим в datetime
         # ВАЖНО: это время в UTC
         sunrise_utc = dt.datetime.strptime(sunrise_str,
@@ -110,8 +109,8 @@ class Times:
         # берем таймзону нашего места в формате timezone
         tz = pytz.timezone(place.timezone())
         # переводим время рассвета и заката с utc на нашу timezone
-        sunrise_local = self.get_coordinates(place)[0].astimezone(tz)
-        sunset_local = self.get_coordinates(place)[1].astimezone(tz)
+        sunrise_local = self.get_times(place)[0].astimezone(tz)
+        sunset_local = self.get_times(place)[1].astimezone(tz)
         return [sunrise_local, sunset_local]
 
     def show_result(self, place):
